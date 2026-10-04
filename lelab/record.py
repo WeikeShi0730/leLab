@@ -698,10 +698,16 @@ def record_with_web_events(cfg: RecordConfig, web_events: dict) -> LeRobotDatase
     dataset_features = {**action_features, **obs_features}
 
     if cfg.resume:
+        # A session that stopped before finalize() has no episode index, and LeRobot
+        # would then try to download the dataset from the Hub instead of resuming it.
+        repair_local_dataset(cfg.dataset.repo_id)
         num_cameras = len(robot.cameras) if hasattr(robot, "cameras") else 0
+        from lerobot.utils.constants import HF_LEROBOT_HOME
+
         dataset = LeRobotDataset.resume(
             cfg.dataset.repo_id,
-            root=cfg.dataset.root,
+            # resume() requires an explicit root; this is where create() put the dataset.
+            root=cfg.dataset.root or HF_LEROBOT_HOME / cfg.dataset.repo_id,
             batch_encoding_size=cfg.dataset.video_encoding_batch_size,
             rgb_encoder=cfg.dataset.rgb_encoder,
             depth_encoder=cfg.dataset.depth_encoder,

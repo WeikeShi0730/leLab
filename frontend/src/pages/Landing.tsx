@@ -39,6 +39,8 @@ const Landing = () => {
   // Recording modal state
   const [showRecordingModal, setShowRecordingModal] = useState(false);
   const [datasetName, setDatasetName] = useState("");
+  // repo_id of a local dataset to add episodes to; "" records a new dataset.
+  const [resumeRepoId, setResumeRepoId] = useState("");
   const [singleTask, setSingleTask] = useState("");
   const [numEpisodes, setNumEpisodes] = useState(5);
   const [episodeTimeS, setEpisodeTimeS] = useState(60);
@@ -136,7 +138,7 @@ const Landing = () => {
       });
       return;
     }
-    if (!datasetName || !singleTask) {
+    if ((!datasetName && !resumeRepoId) || !singleTask) {
       toast({
         title: "Missing dataset details",
         description: "Please enter a dataset name and task description.",
@@ -145,8 +147,9 @@ const Landing = () => {
       return;
     }
 
-    const datasetRepoId =
-      auth.status === "authenticated"
+    const datasetRepoId = resumeRepoId
+      ? resumeRepoId
+      : auth.status === "authenticated"
         ? `${auth.username}/${datasetName}`
         : datasetName;
 
@@ -206,7 +209,7 @@ const Landing = () => {
       fps: 30,
       video: true,
       push_to_hub: false,
-      resume: false,
+      resume: !!resumeRepoId,
       streaming_encoding: streamingEncoding,
       cameras: cameraDict,
     };
@@ -301,6 +304,11 @@ const Landing = () => {
         robot={selectedRecord}
         datasetName={datasetName}
         setDatasetName={setDatasetName}
+        localDatasets={datasets
+          .filter((d) => d.source !== "hub")
+          .map((d) => d.repo_id)}
+        resumeRepoId={resumeRepoId}
+        setResumeRepoId={setResumeRepoId}
         singleTask={singleTask}
         setSingleTask={setSingleTask}
         numEpisodes={numEpisodes}

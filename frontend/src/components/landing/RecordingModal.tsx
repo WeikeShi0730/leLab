@@ -17,6 +17,13 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AlertTriangle, CheckCircle, ChevronDown } from "lucide-react";
 import CameraConfiguration, {
   CameraConfig,
@@ -30,6 +37,10 @@ interface RecordingModalProps {
   robot: RobotRecord | null;
   datasetName: string;
   setDatasetName: (value: string) => void;
+  /** repo_ids of datasets on disk that new episodes can be added to. */
+  localDatasets: string[];
+  resumeRepoId: string;
+  setResumeRepoId: (value: string) => void;
   singleTask: string;
   setSingleTask: (value: string) => void;
   numEpisodes: number;
@@ -52,6 +63,9 @@ const RecordingModal: React.FC<RecordingModalProps> = ({
   robot,
   datasetName,
   setDatasetName,
+  localDatasets,
+  resumeRepoId,
+  setResumeRepoId,
   singleTask,
   setSingleTask,
   numEpisodes,
@@ -70,6 +84,8 @@ const RecordingModal: React.FC<RecordingModalProps> = ({
   const { auth } = useHfAuth();
 
   const canStart = !!robot && robot.is_clean;
+  // Radix Select disallows "" as a value, so a sentinel stands for "new dataset".
+  const NEW_DATASET = "__new__";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -125,43 +141,83 @@ const RecordingModal: React.FC<RecordingModalProps> = ({
                 Dataset Configuration
               </h3>
               <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="datasetName"
-                    className="text-sm font-medium text-gray-300"
-                  >
-                    Dataset Name *
-                  </Label>
-                  <Input
-                    id="datasetName"
-                    value={datasetName}
-                    onChange={(e) =>
-                      setDatasetName(
-                        e.target.value.replace(/[^A-Za-z0-9._-]/g, "_")
-                      )
-                    }
-                    placeholder="my_dataset"
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Letters, numbers, <code>.</code> <code>_</code>{" "}
-                    <code>-</code> only — other characters become{" "}
-                    <code>_</code>.
-                  </p>
-                  {datasetName &&
-                    (auth.status === "authenticated" ? (
+                {localDatasets.length > 0 && (
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="resumeDataset"
+                      className="text-sm font-medium text-gray-300"
+                    >
+                      Record into
+                    </Label>
+                    <Select
+                      value={resumeRepoId || NEW_DATASET}
+                      onValueChange={(v) =>
+                        setResumeRepoId(v === NEW_DATASET ? "" : v)
+                      }
+                    >
+                      <SelectTrigger
+                        id="resumeDataset"
+                        className="bg-gray-800 border-gray-700 text-white"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-800 border-gray-700 text-white">
+                        <SelectItem value={NEW_DATASET}>A new dataset</SelectItem>
+                        {localDatasets.map((id) => (
+                          <SelectItem key={id} value={id}>
+                            {id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {resumeRepoId && (
                       <p className="text-xs text-gray-500">
-                        Will be saved as{" "}
-                        <span className="text-gray-300 font-mono">
-                          {auth.username}/{datasetName}
-                        </span>
+                        New episodes are added after the existing ones. Use
+                        the same cameras and settings the dataset was
+                        recorded with.
                       </p>
-                    ) : auth.status === "unauthenticated" ? (
-                      <p className="text-xs text-amber-400/80">
-                        Log in to Hugging Face to set the repository owner.
-                      </p>
-                    ) : null)}
-                </div>
+                    )}
+                  </div>
+                )}
+                {!resumeRepoId && (
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="datasetName"
+                      className="text-sm font-medium text-gray-300"
+                    >
+                      Dataset Name *
+                    </Label>
+                    <Input
+                      id="datasetName"
+                      value={datasetName}
+                      onChange={(e) =>
+                        setDatasetName(
+                          e.target.value.replace(/[^A-Za-z0-9._-]/g, "_")
+                        )
+                      }
+                      placeholder="my_dataset"
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Letters, numbers, <code>.</code> <code>_</code>{" "}
+                      <code>-</code> only — other characters become{" "}
+                      <code>_</code>.
+                    </p>
+                    {datasetName &&
+                      (auth.status === "authenticated" ? (
+                        <p className="text-xs text-gray-500">
+                          Will be saved as{" "}
+                          <span className="text-gray-300 font-mono">
+                            {auth.username}/{datasetName}
+                          </span>
+                        </p>
+                      ) : auth.status === "unauthenticated" ? (
+                        <p className="text-xs text-amber-400/80">
+                          Log in to Hugging Face to set the repository owner.
+                        </p>
+                      ) : null)}
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label
                     htmlFor="singleTask"
